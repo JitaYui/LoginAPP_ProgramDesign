@@ -8,23 +8,23 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import com.example.loginapp_programdesign.JsonPlaceHolderApi;
 import com.example.small.a20190105.R;
@@ -92,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
                 contentold += s;
                 buffer = new char[READ_BLOCK_SIZE];
             }
-            sr.close();     // 關閉串流
+            sr.close();     // 關閉串流\
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -116,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
         latitude_txt = (TextView) findViewById(R.id.latitude);
 
         //取得系統定位服務
-        LocationManager status = (LocationManager) (this.getSystemService(Context.LOCATION_SERVICE));
-        if (status.isProviderEnabled(LocationManager.GPS_PROVIDER) || status.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+        lms = (LocationManager) (this.getSystemService(Context.LOCATION_SERVICE));
+        if (lms.isProviderEnabled(LocationManager.GPS_PROVIDER) || lms.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             //如果GPS或網路定位開啟，呼叫locationServiceInitial()更新位置
             locationServiceInitial();
         } else {
@@ -130,7 +130,49 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void locationServiceInitial() {
-        LocationManager lms = (LocationManager) (this.getSystemService(Context.LOCATION_SERVICE)); //取得系統定位服務
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, PERMISSION_GPS, 1);
+
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+//        lms.requestLocationUpdates(bestProvider, 1000, 10, new LocationListener() {
+//            @Override
+//            public void onLocationChanged(Location location) {
+//
+//                if (location != null) {
+//                    updateLocation(location);
+//                } else {
+//                    Toast.makeText(getApplicationContext(), "無法定位座標", Toast.LENGTH_LONG).show();
+//                    Log.d("DEBUG","Listener Location is null...");
+//                }
+//            }
+//
+//            @Override
+//            public void onStatusChanged(String s, int i, Bundle bundle) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderEnabled(String s) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderDisabled(String s) {
+//            }
+//        });
+        Criteria criteria = new Criteria();
+        bestProvider = lms.getBestProvider(criteria, true);    //選擇精準度最高的提供者
+        Location location = lms.getLastKnownLocation(bestProvider);
+        updateLocation(location);
         /* 做法一,由程式判斷用GPS_provider
         if (lms.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -144,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             location = lms.getLastKnownLocation(LocationManager.GPS_PROVIDER);  //使用GPS定位座標
-        } else if (lms.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)) {
+        } else if (lm  s.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 // TODO: Consider calling
                 //    ActivityCompat#requestPermissions
@@ -159,35 +201,17 @@ public class MainActivity extends AppCompatActivity {
          }
          //else {}*/
         //做法二,由Criteria物件判斷提供最準確的資訊
-        Criteria criteria = new Criteria();  //資訊提供者選取標準
-        bestProvider = lms.getBestProvider(criteria, true);    //選擇精準度最高的提供者
+  //資訊提供者選取標準
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, PERMISSION_GPS, 1);
-
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        Location location = lms.getLastKnownLocation(bestProvider);
-
-        getLocation(location);
     }
 
-    private void getLocation(Location location) { //將定位資訊顯示在畫面中
-        if (location != null) {
-            Double longitude = location.getLongitude();   //取得經度
-            Double latitude = location.getLatitude();     //取得緯度
-            longitude_txt.setText(String.valueOf(longitude));
-            latitude_txt.setText(String.valueOf(latitude));
-        } else {
-            Toast.makeText(this, "無法定位座標", Toast.LENGTH_LONG).show();
-        }
+    void updateLocation(Location location) {
+        Log.d("DEBUG","updateLocation method...");
+        if(location!=null){
+            longitude_txt.setText(String.valueOf(location.getLongitude()));
+            latitude_txt.setText(String.valueOf(location.getLatitude()));
+        } else
+            Log.d("DEBUG","Location is null...");
     }
 
     public void exit_bt(View view) {
@@ -302,13 +326,12 @@ public class MainActivity extends AppCompatActivity {
 
     //GPS
 
-    public class GetLocation extends Activity implements LocationListener {
+    /*public class GetLocation extends Activity implements LocationListener {
 
 
         @Override
         public void onLocationChanged(Location location) {  //當地點改變時
             // TODO 自動產生的方法 Stub
-            getLocation(location);
         }
 
         @Override
@@ -356,6 +379,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+*/
+    private class myAsyncTask extends AsyncTask<String, String, Void> {
+        @Override
+        protected Void doInBackground(String... strings) {
+            return null;
+        }
 
+        @Override
+        protected void onProgressUpdate(String... values) {
+            super.onProgressUpdate(values);
+
+        }
+    };
 
 }
